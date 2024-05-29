@@ -37,30 +37,32 @@ func getAnsibleRoles(path string) ([]string, error) {
 	return roles, nil
 }
 
-func parseRoleMetadata(path string) (map, error {
+func parseRoleMetadata(path string) (map[string]map[string]string, error) {
 	f, err := os.Open(path + string(os.PathSeparator) + ".metadata")
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return nil, err
+	}
 	defer f.Close()
 
-    scanner := bufio.NewScanner(f)
-    categoryRegex := regexp.MustCompile(`^\[(.*)?\]$`)
-    configRegex := regexp.MustCompile(`^(\w+?)\s+=\s+(.*)$`)
-    configMap := make(map[string]map[string]string)
-    for scanner.Scan() {
-        category := ""
-        line := scanner.Text()
-        if categoryRegex.MatchString(line) {
-            category = categoryRegex.FindStringSubmatch(line)[1]
-            configMap[category] = make(map[string]string)
-            fmt.Println(category)
-        } else if configRegex.MatchString(line) {
-            config := configRegex.FindStringSubmatch(line)
-            configMap[category][config[1]] = config[2]
-            fmt.Println(configMap[category])
-        }
-    }
+	scanner := bufio.NewScanner(f)
+	categoryRegex := regexp.MustCompile(`^\[(.*)?\]$`)
+	configRegex := regexp.MustCompile(`^(\w+?)\s+=\s+(.*)$`)
+	configMap := make(map[string]map[string]string)
+	var category string
 
-    return configMap, nil
+	for scanner.Scan() {
+		line := scanner.Text()
+		if categoryRegex.MatchString(line) {
+			category = categoryRegex.FindStringSubmatch(line)[1]
+			configMap[category] = make(map[string]string)
+		} else if configRegex.MatchString(line) {
+			if category == "" {
+				return nil, fmt.Errorf("found config without category in %v", path)
+			}
+			config := configRegex.FindStringSubmatch(line)
+			configMap[category][config[1]] = config[2]
+		}
+	}
+
+	return configMap, nil
 }

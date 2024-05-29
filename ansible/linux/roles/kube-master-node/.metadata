@@ -1,2 +1,3 @@
-[service]
+[kubernetes]
+name = rancher_master
 limit = 1

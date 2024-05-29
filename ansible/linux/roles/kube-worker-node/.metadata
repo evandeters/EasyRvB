@@ -1,0 +1,6 @@
+[kubernetes]
+name = rancher_worker
+limit = 3
+
+[dependencies]
+service = rancher_master
