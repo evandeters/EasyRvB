@@ -8,4 +8,6 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Println(roles)
+
+    err = parseRoleMetadata("./ansible/linux/roles/kube-master-node/")
 }
