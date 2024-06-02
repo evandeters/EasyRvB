@@ -1,0 +1,9 @@
+name = "rancher_worker"
+port = 6443
+protocol = "tcp"
+distribution = "rancher"
+nodetype = "worker"
+limit = 3
+
+[dependency]
+service = ["rancher_master"]

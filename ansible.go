@@ -1,18 +1,10 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
-
-type Role struct {
-	Name string
-	Max  int
-}
 
 func getAnsibleRoles(path string) ([]string, error) {
 	var roles []string
@@ -37,32 +29,25 @@ func getAnsibleRoles(path string) ([]string, error) {
 	return roles, nil
 }
 
-func parseRoleMetadata(path string) (map[string]map[string]string, error) {
-	f, err := os.Open(path + string(os.PathSeparator) + ".metadata")
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	categoryRegex := regexp.MustCompile(`^\[(.*)?\]$`)
-	configRegex := regexp.MustCompile(`^(\w+?)\s+=\s+(.*)$`)
-	configMap := make(map[string]map[string]string)
-	var category string
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if categoryRegex.MatchString(line) {
-			category = categoryRegex.FindStringSubmatch(line)[1]
-			configMap[category] = make(map[string]string)
-		} else if configRegex.MatchString(line) {
-			if category == "" {
-				return nil, fmt.Errorf("found config without category in %v", path)
-			}
-			config := configRegex.FindStringSubmatch(line)
-			configMap[category][config[1]] = config[2]
+func getRoleType(path string) (string, error) {
+	var fileData string
+	error := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
+
+		pathArr := strings.Split(filePath, string(os.PathSeparator))
+
+		if strings.HasSuffix(pathArr[len(pathArr)-1], ".toml") {
+			fileData = pathArr[len(pathArr)-1]
+		}
+
+		return nil
+	})
+
+	if error != nil {
+		return "", error
 	}
 
-	return configMap, nil
+	return strings.Split(fileData, ".")[0], nil
 }

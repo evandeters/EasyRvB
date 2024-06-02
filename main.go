@@ -1,24 +1,44 @@
 package main
 
-import "fmt"
+import (
+	"EasyRvB/service"
+	"fmt"
+	"os"
+)
 
 func main() {
 	roles, err := getAnsibleRoles("./ansible")
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(roles)
-
-	configMap := make(map[string]map[string]string)
 
 	for _, role := range roles {
-		configMap, err = parseRoleMetadata(role)
-		for k := range configMap {
-			fmt.Printf("Category: %s\n", k)
-			for k2, v2 := range configMap[k] {
-				fmt.Printf("Key: %s ", k2)
-				fmt.Printf("Value: %s\n", v2)
-			}
+		service := CreateService(role)
+		printServiceDetails(service)
+	}
+}
+
+func CreateService(role string) service.Service {
+	roleType, err := getRoleType(role)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	switch roleType {
+	case "kubernetes":
+		service := service.KubernetesConfig{}
+		err := service.ReadConfig(role + string(os.PathSeparator) + roleType + ".toml")
+		if err != nil {
+			fmt.Println(err)
 		}
+		return &service
+	}
+	return nil
+}
+
+func printServiceDetails(s service.Service) {
+	switch s := s.(type) {
+	case *service.KubernetesConfig:
+		fmt.Printf("Service Name: %s\n", s.Name)
 	}
 }

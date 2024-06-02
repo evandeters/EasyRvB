@@ -1,19 +1,19 @@
 package service
 
 import (
-    "fmt"
+	"fmt"
 )
 
 type HTTPConfig struct {
-    Host string `json:"host"`
-    Cms string `json:"cms"`
+	Host string `toml:"host"`
+	Cms  string `toml:"cms"`
 }
 
 func (c *HTTPConfig) ReadConfig() error {
-    fmt.Println("Reading config")
-    
-    fmt.Println("Host: ", c.Host)
-    fmt.Println("CMS: ", c.Cms)
+	fmt.Println("Reading config")
 
-    return nil
+	fmt.Println("Host: ", c.Host)
+	fmt.Println("CMS: ", c.Cms)
+
+	return nil
 }

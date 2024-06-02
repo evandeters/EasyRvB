@@ -1,0 +1,6 @@
+Name = "rancher_master"
+Port = 6443
+Protocol = "tcp"
+Limit = 1
+Distribution = "rancher"
+NodeType = "master"
