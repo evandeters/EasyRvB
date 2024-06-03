@@ -2,6 +2,7 @@ package main
 
 import (
 	"EasyRvB/service"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -12,33 +13,40 @@ func main() {
 		fmt.Println(err)
 	}
 
+	var ServiceConfigs []*service.ServiceConfig
+
 	for _, role := range roles {
-		service := CreateService(role)
-		printServiceDetails(service)
+		service, err := CreateService(role)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		ServiceConfigs = append(ServiceConfigs, service)
+	}
+	for i, svc := range ServiceConfigs {
+		fmt.Println(ServiceConfigs[i].Name)
+		fmt.Println(ServiceConfigs[i].Port)
+
+		fmt.Println(svc)
 	}
 }
 
-func CreateService(role string) service.Service {
+func CreateService(role string) (*service.ServiceConfig, error) {
 	roleType, err := getRoleType(role)
 	if err != nil {
 		fmt.Println(err)
 	}
+	configPath := role + string(os.PathSeparator) + roleType + ".toml"
 
-	switch roleType {
-	case "kubernetes":
-		service := service.KubernetesConfig{}
-		err := service.ReadConfig(role + string(os.PathSeparator) + roleType + ".toml")
-		if err != nil {
-			fmt.Println(err)
-		}
-		return &service
+	if _, err := os.Stat(configPath); err != nil {
+		return nil, err
 	}
-	return nil
-}
 
-func printServiceDetails(s service.Service) {
-	switch s := s.(type) {
-	case *service.KubernetesConfig:
-		fmt.Printf("Service Name: %s\n", s.Name)
+	service := service.ServiceConfig{}
+	err = service.ReadConfig(configPath)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Role Type Unknown: %v. Error: %v", roleType, err))
 	}
+
+	return &service, nil
 }

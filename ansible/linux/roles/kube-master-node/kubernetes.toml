@@ -2,5 +2,7 @@ Name = "rancher_master"
 Port = 6443
 Protocol = "tcp"
 Limit = 1
+
+[kubernetes]
 Distribution = "rancher"
 NodeType = "master"

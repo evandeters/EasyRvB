@@ -9,7 +9,7 @@ type Host struct {
 	Hostname        string
 	Ip              net.IP
 	OperatingSystem string
-	Services        []*service.Service
+	Services        []*service.ServiceInstance
 }
 
 func NewHost(hostname string, ip net.IP, operatingSystem string) *Host {
@@ -17,17 +17,17 @@ func NewHost(hostname string, ip net.IP, operatingSystem string) *Host {
 		Hostname:        hostname,
 		Ip:              ip,
 		OperatingSystem: operatingSystem,
-		Services:        []*service.Service{},
+		Services:        []*service.ServiceInstance{},
 	}
 }
 
-func (h *Host) AddService(s service.Service) {
+func (h *Host) AddService(s service.ServiceInstance) {
 	h.Services = append(h.Services, &s)
 }
 
-func (h *Host) RemoveService(s service.Service) {
+func (h *Host) RemoveService(s service.ServiceInstance) {
 	for i, service := range h.Services {
-		if service.Name == s.Name {
+		if service.ID == s.ID {
 			h.Services = append(h.Services[:i], h.Services[i+1:]...)
 			break
 		}

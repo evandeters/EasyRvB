@@ -1,0 +1,11 @@
+name = "rancher_http"
+port = 8080
+protocol = "tcp"
+limit = 1
+
+[http]
+host = "www.rancher.lab"
+cms = "custom"
+
+[dependency]
+service = ["rancher_master"]
