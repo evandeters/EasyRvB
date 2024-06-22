@@ -1,52 +1,59 @@
 package main
 
 import (
+	"EasyRvB/host"
 	"EasyRvB/service"
-	"errors"
 	"fmt"
-	"os"
+	"net"
 )
 
-func main() {
+var ServiceConfigs map[string]*service.ServiceConfig
+
+func init() {
+	ServiceConfigs = make(map[string]*service.ServiceConfig)
+
 	roles, err := getAnsibleRoles("./ansible")
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	var ServiceConfigs []*service.ServiceConfig
-
 	for _, role := range roles {
-		service, err := CreateService(role)
+		roleType, err := GetRoleType(role)
+		if err != nil {
+			panic(err)
+		}
+
+		service, err := ServiceFromRole(role, roleType)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		ServiceConfigs = append(ServiceConfigs, service)
+		fmt.Println(service.Name)
+		ServiceConfigs[service.Name] = service
 	}
-	for i, svc := range ServiceConfigs {
-		fmt.Println(ServiceConfigs[i].Name)
-		fmt.Println(ServiceConfigs[i].Port)
 
-		fmt.Println(svc)
+	for _, svc := range ServiceConfigs {
+		if (svc.Http != service.HTTPConfig{}) {
+			// do stuff
+		}
+
+		if (svc.Kubernetes != service.KubernetesConfig{}) {
+			// do stuff
+		}
 	}
+
 }
 
-func CreateService(role string) (*service.ServiceConfig, error) {
-	roleType, err := getRoleType(role)
+func main() {
+	target := net.IPv4(192, 168, 68, 30)
+	testHost := host.NewHost("test-web", target, "Ubuntu22")
+	fmt.Println(target)
+	err := RunPlaybook("apache", target)
 	if err != nil {
 		fmt.Println(err)
-	}
-	configPath := role + string(os.PathSeparator) + roleType + ".toml"
-
-	if _, err := os.Stat(configPath); err != nil {
-		return nil, err
+	} else {
+		testHost.AddService(*service.NewServiceInstance(ServiceConfigs["apache_http"]))
 	}
 
-	service := service.ServiceConfig{}
-	err = service.ReadConfig(configPath)
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Role Type Unknown: %v. Error: %v", roleType, err))
-	}
-
-	return &service, nil
+	testHost.GetServices()
 }

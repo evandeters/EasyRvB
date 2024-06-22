@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/uuid"
 )
 
 type ServiceConfig struct {
@@ -18,7 +19,7 @@ type ServiceConfig struct {
 }
 
 type ServiceInstance struct {
-	ID        string
+	ID        uuid.UUID
 	ConfigMap *ServiceConfig
 }
 
@@ -32,4 +33,13 @@ func (g *ServiceConfig) ReadConfig(path string) error {
 		return err
 	}
 	return nil
+}
+
+func NewServiceInstance(config *ServiceConfig) *ServiceInstance {
+	svc := ServiceInstance{
+		ID:        uuid.New(),
+		ConfigMap: config,
+	}
+
+	return &svc
 }

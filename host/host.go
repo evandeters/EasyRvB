@@ -2,6 +2,7 @@ package host
 
 import (
 	"EasyRvB/service"
+	"fmt"
 	"net"
 )
 
@@ -32,4 +33,11 @@ func (h *Host) RemoveService(s service.ServiceInstance) {
 			break
 		}
 	}
+}
+
+func (h *Host) GetServices() {
+	for i := range h.Services {
+		fmt.Println(h.Services[i].ConfigMap)
+	}
+
 }
