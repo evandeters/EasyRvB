@@ -1,6 +1,6 @@
 ---
 - hosts: all
   roles:
-    - role: apache
+    - role: kube-master-node
       tags:
-        - apache
+        - kube-master-node

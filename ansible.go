@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"EasyRvB/service"
 
@@ -86,6 +87,26 @@ func RunPlaybook(role string, ip net.IP) error {
 		Tags:      role,
 	}
 
+	type roleTemplate struct {
+		Role string
+	}
+
+	tmpl, err := template.New("playbook.tmpl").ParseGlob("ansible/playbook.tmpl")
+	if err != nil {
+		panic(err)
+	}
+
+	outputFile, err := os.Create("ansible/playbook.yaml")
+	if err != nil {
+		panic(err)
+	}
+	defer outputFile.Close()
+
+	err = tmpl.Execute(outputFile, roleTemplate{role})
+	if err != nil {
+		panic(err)
+	}
+
 	playbookCmd := playbook.NewAnsiblePlaybookCmd(
 		playbook.WithPlaybooks("ansible/playbook.yaml"),
 		playbook.WithPlaybookOptions(ansiblePlaybookOptions),
@@ -95,7 +116,7 @@ func RunPlaybook(role string, ip net.IP) error {
 		execute.WithCmd(playbookCmd),
 	)
 
-	err := exec.Execute(context.Background())
+	err = exec.Execute(context.Background())
 	if err != nil {
 		return err
 	}

@@ -38,7 +38,6 @@ func init() {
 		}
 
 		if (svc.Kubernetes != service.KubernetesConfig{}) {
-			// do stuff
 		}
 	}
 
@@ -48,7 +47,7 @@ func main() {
 	target := net.IPv4(192, 168, 68, 30)
 	testHost := host.NewHost("test-web", target, "Ubuntu22")
 	fmt.Println(target)
-	err := RunPlaybook("apache", target)
+	err := RunPlaybook("kube-master-node", target)
 	if err != nil {
 		fmt.Println(err)
 	} else {
