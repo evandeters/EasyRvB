@@ -19,3 +19,8 @@
 
 # Go workspace file
 go.work
+
+# Config File
+config.toml
+
+ansible/*.yaml

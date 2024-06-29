@@ -1,0 +1,27 @@
+---
+- name: Create a VM from a template
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Clone the template
+    vmware_guest:
+      hostname: "{{ .VCenterServer }}"
+      username: "{{ .VCenterUser }}"
+      password: "{{ .VCenterPassword }}"
+      validate_certs: False
+      name: "{{ .VMName }}"
+      template: "{{ .TemplateName }}"
+      datacenter: "{{ .Datacenter }}"
+      datastore: "{{ .Datastore }}"
+      folder: "{{ .VMFolder }}"
+      state: poweredon
+      cluster: "{{ .Cluster }}"
+      resource_pool: "{{ .ResourcePool }}"
+      networks:
+        - name: "{{ .PortGroup }}"
+          connected: true
+      wait_for_ip_address: yes
+    register: vm_info
+
+  - set_fact:
+      ip_dict: { "ip_address": "[[ vm_info.instance.hw_eth0.ipaddresses[0] ]]" }

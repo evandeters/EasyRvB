@@ -4,12 +4,17 @@ import (
 	"EasyRvB/host"
 	"EasyRvB/service"
 	"fmt"
-	"net"
 )
 
 var ServiceConfigs map[string]*service.ServiceConfig
+var ConfigMap Config
 
 func init() {
+
+    ConfigMap = Config{}
+    ReadConfig(&ConfigMap, "config.toml")
+    fmt.Println(ConfigMap)
+    
 	ServiceConfigs = make(map[string]*service.ServiceConfig)
 
 	roles, err := getAnsibleRoles("./ansible")
@@ -44,10 +49,9 @@ func init() {
 }
 
 func main() {
-	target := net.IPv4(192, 168, 68, 30)
-	testHost := host.NewHost("test-web", target, "Ubuntu22")
-	fmt.Println(target)
-	err := RunPlaybook("kube-master-node", target)
+    ip := CreateVM("Ubuntu 22.04 Blank", "TestVM3")
+    testHost := host.NewHost("test-web", ip, "Ubuntu22")
+	err := RunPlaybook("apache", testHost)
 	if err != nil {
 		fmt.Println(err)
 	} else {

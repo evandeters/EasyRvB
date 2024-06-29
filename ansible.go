@@ -1,125 +1,177 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"text/template"
 
+	"EasyRvB/host"
 	"EasyRvB/service"
 
+	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
 	"github.com/apenella/go-ansible/v2/pkg/execute"
+	"github.com/apenella/go-ansible/v2/pkg/execute/stdoutcallback"
 	"github.com/apenella/go-ansible/v2/pkg/playbook"
 )
 
 func getAnsibleRoles(path string) ([]string, error) {
-	var roles []string
-	error := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+    var roles []string
+    error := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+        if err != nil {
+            return err
+        }
 
-		pathArr := strings.Split(filePath, string(os.PathSeparator))
+        pathArr := strings.Split(filePath, string(os.PathSeparator))
 
-		if pathArr[len(pathArr)-2] == "roles" && !strings.HasPrefix(pathArr[len(pathArr)-1], ".") {
-			roles = append(roles, filePath)
-		}
+        if pathArr[len(pathArr)-2] == "roles" && !strings.HasPrefix(pathArr[len(pathArr)-1], ".") {
+            roles = append(roles, filePath)
+        }
 
-		return nil
-	})
+        return nil
+    })
 
-	if error != nil {
-		return nil, error
-	}
+    if error != nil {
+        return nil, error
+    }
 
-	return roles, nil
+    return roles, nil
 }
 
 func GetRoleType(path string) (string, error) {
-	var fileData string
-	error := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+    var fileData string
+    error := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+        if err != nil {
+            return err
+        }
 
-		pathArr := strings.Split(filePath, string(os.PathSeparator))
+        pathArr := strings.Split(filePath, string(os.PathSeparator))
 
-		if strings.HasSuffix(pathArr[len(pathArr)-1], ".toml") {
-			fileData = pathArr[len(pathArr)-1]
-		}
+        if strings.HasSuffix(pathArr[len(pathArr)-1], ".toml") {
+            fileData = pathArr[len(pathArr)-1]
+        }
 
-		return nil
-	})
+        return nil
+    })
 
-	if error != nil {
-		return "", error
-	}
+    if error != nil {
+        return "", error
+    }
 
-	return strings.Split(fileData, ".")[0], nil
+    return strings.Split(fileData, ".")[0], nil
 }
 
 func ServiceFromRole(role, roleType string) (*service.ServiceConfig, error) {
-	fmt.Printf("Role: %v, RoleType: %v\n", role, roleType)
+    fmt.Printf("Role: %v, RoleType: %v\n", role, roleType)
 
-	configPath := role + string(os.PathSeparator) + roleType + ".toml"
+    configPath := role + string(os.PathSeparator) + roleType + ".toml"
 
-	if _, err := os.Stat(configPath); err != nil {
-		return nil, err
-	}
+    if _, err := os.Stat(configPath); err != nil {
+        return nil, err
+    }
 
-	service := service.ServiceConfig{}
-	err := service.ReadConfig(configPath)
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Role Type Unknown: %v. Error: %v", role, err))
-	}
+    service := service.ServiceConfig{}
+    err := service.ReadConfig(configPath)
+    if err != nil {
+        return nil, errors.New(fmt.Sprintf("Role Type Unknown: %v. Error: %v", role, err))
+    }
 
-	return &service, nil
+    return &service, nil
 }
 
-func RunPlaybook(role string, ip net.IP) error {
-	ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
-		Become:    true,
-		Inventory: ip.String() + ",",
-		Tags:      role,
-	}
+func RunPlaybook(role string, target *host.Host) error {
+    ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
+        Become:    true,
+        Inventory: target.Ip.String() + ",",
+        Tags:      role,
+        User:      "root",
+    }
 
-	type roleTemplate struct {
-		Role string
-	}
 
-	tmpl, err := template.New("playbook.tmpl").ParseGlob("ansible/playbook.tmpl")
-	if err != nil {
-		panic(err)
-	}
+    type roleTemplate struct {
+        Role string
+    }
 
-	outputFile, err := os.Create("ansible/playbook.yaml")
-	if err != nil {
-		panic(err)
-	}
-	defer outputFile.Close()
+    FillTemplate("ansible/templates/playbook.tmpl", roleTemplate{Role: role})
 
-	err = tmpl.Execute(outputFile, roleTemplate{role})
-	if err != nil {
-		panic(err)
-	}
+    playbookCmd := playbook.NewAnsiblePlaybookCmd(
+        playbook.WithPlaybooks("ansible/playbook.yaml"),
+        playbook.WithPlaybookOptions(ansiblePlaybookOptions),
+    )
 
-	playbookCmd := playbook.NewAnsiblePlaybookCmd(
-		playbook.WithPlaybooks("ansible/playbook.yaml"),
-		playbook.WithPlaybookOptions(ansiblePlaybookOptions),
-	)
+    exec := execute.NewDefaultExecute(
+        execute.WithCmd(playbookCmd),
+    )
 
-	exec := execute.NewDefaultExecute(
-		execute.WithCmd(playbookCmd),
-	)
+    err := exec.Execute(context.Background())
+    if err != nil { return err }
 
-	err = exec.Execute(context.Background())
-	if err != nil {
-		return err
-	}
+    return nil
+}
 
-	return nil
+func CreateVM(templateName string, vmName string) net.IP {
+    vmData := struct{
+        TemplateName string
+        VCenterServer string
+        VCenterUser string
+        VCenterPassword string
+        ResourcePool string
+        Datacenter string
+        Cluster string
+        VMFolder string
+        VMName string
+        Datastore string
+        PortGroup string
+    }{
+        TemplateName: templateName,
+        VCenterServer: ConfigMap.VCenterServer,
+        VCenterUser: ConfigMap.VCenterUsername,
+        VCenterPassword: ConfigMap.VCenterPassword,
+        ResourcePool: ConfigMap.ResourcePool,
+        Datacenter: ConfigMap.Datacenter,
+        Cluster: ConfigMap.Cluster,
+        VMFolder: ConfigMap.VMFolder,
+        Datastore: ConfigMap.Datastore,
+        PortGroup: ConfigMap.PortGroup,
+        VMName: vmName,
+    }
+
+    FillTemplate("ansible/templates/vm.tmpl", vmData)
+    ReplaceBrackets("ansible/vm.yaml")
+
+    playbookCmd := playbook.NewAnsiblePlaybookCmd(
+        playbook.WithPlaybooks("ansible/vm.yaml"),
+    )
+
+    buff := new(bytes.Buffer)
+
+
+    exec := stdoutcallback.NewJSONStdoutCallbackExecute(execute.NewDefaultExecute(
+        execute.WithCmd(playbookCmd),
+        execute.WithWrite(io.Writer(buff)),
+        ),
+    )
+
+    err := exec.Execute(context.Background())
+    if err != nil { 
+        panic(err)
+    }
+
+    res, err := results.ParseJSONResultsStream(buff)
+    if err != nil {
+        panic(err)
+    }
+
+    ipAdd := res.Plays[0].Tasks[1].Hosts["localhost"].AnsibleFacts["ip_dict"].(map[string]interface{})["ip_address"]
+    if ipAdd == nil {
+        panic("IP Address not found")
+    }
+
+    return net.ParseIP(ipAdd.(string))
+
 }

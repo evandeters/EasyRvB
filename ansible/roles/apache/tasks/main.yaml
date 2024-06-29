@@ -3,6 +3,16 @@
   ansible.builtin.include_vars:
     dir: "../vars/"
 
+- name: Update APT Package Cache
+  ansible.builtin.apt:
+    update_cache: yes
+  when: ansible_pkg_mgr == 'apt'
+
+- name: Update YUM Package Cache
+  ansible.builtin.dnf:
+    update_cache: yes
+  when: ansible_pkg_mgr == 'yum'
+
 - name: Install Prerequisites
   ansible.builtin.package:
     name:
