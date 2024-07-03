@@ -9,14 +9,16 @@ import (
 type Host struct {
 	Hostname        string
 	Ip              net.IP
+    NattedIp        net.IP
 	OperatingSystem string
 	Services        []*service.ServiceInstance
 }
 
-func NewHost(hostname string, ip net.IP, operatingSystem string) *Host {
+func NewHost(hostname string, ip, nattedIP net.IP, operatingSystem string) *Host {
 	return &Host{
 		Hostname:        hostname,
 		Ip:              ip,
+        NattedIp:        nattedIP,
 		OperatingSystem: operatingSystem,
 		Services:        []*service.ServiceInstance{},
 	}

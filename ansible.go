@@ -1,23 +1,24 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"errors"
-	"fmt"
-	"io"
-	"net"
-	"os"
-	"path/filepath"
-	"strings"
+    "bytes" 
+    "context"
+    "math/rand"
+    "errors"
+    "fmt"
+    "io"
+    "net"
+    "os"
+    "path/filepath"
+    "strings"
 
-	"EasyRvB/host"
-	"EasyRvB/service"
+    "EasyRvB/host"
+    "EasyRvB/service"
 
-	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
-	"github.com/apenella/go-ansible/v2/pkg/execute"
-	"github.com/apenella/go-ansible/v2/pkg/execute/stdoutcallback"
-	"github.com/apenella/go-ansible/v2/pkg/playbook"
+    "github.com/apenella/go-ansible/pkg/stdoutcallback/results"
+    "github.com/apenella/go-ansible/v2/pkg/execute"
+    "github.com/apenella/go-ansible/v2/pkg/execute/stdoutcallback"
+    "github.com/apenella/go-ansible/v2/pkg/playbook"
 )
 
 func getAnsibleRoles(path string) ([]string, error) {
@@ -84,12 +85,13 @@ func ServiceFromRole(role, roleType string) (*service.ServiceConfig, error) {
     return &service, nil
 }
 
-func RunPlaybook(role string, target *host.Host) error {
+func RunPlaybook(role string, target *host.Host, user string) error {
     ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
         Become:    true,
-        Inventory: target.Ip.String() + ",",
+        Inventory: target.NattedIp.String() + ",",
         Tags:      role,
-        User:      "root",
+        User:      user,
+
     }
 
 
@@ -115,6 +117,22 @@ func RunPlaybook(role string, target *host.Host) error {
 }
 
 func CreateVM(templateName string, vmName string) net.IP {
+    var boxIP string
+    for {
+        ipExists := false
+        fourthOctet := rand.Intn(250) + 4
+        boxIP = fmt.Sprintf("192.168.1.%v", fourthOctet)
+        for _, box := range CurrentHosts {
+            if box.Ip.String() == boxIP {
+                ipExists = true
+                break
+            }
+        }
+        if !ipExists {
+            break
+        }
+    }
+
     vmData := struct{
         TemplateName string
         VCenterServer string
@@ -127,6 +145,7 @@ func CreateVM(templateName string, vmName string) net.IP {
         VMName string
         Datastore string
         PortGroup string
+        IPAddress string
     }{
         TemplateName: templateName,
         VCenterServer: ConfigMap.VCenterServer,
@@ -139,6 +158,7 @@ func CreateVM(templateName string, vmName string) net.IP {
         Datastore: ConfigMap.Datastore,
         PortGroup: ConfigMap.PortGroup,
         VMName: vmName,
+        IPAddress: boxIP,
     }
 
     FillTemplate("ansible/templates/vm.tmpl", vmData)
@@ -149,7 +169,6 @@ func CreateVM(templateName string, vmName string) net.IP {
     )
 
     buff := new(bytes.Buffer)
-
 
     exec := stdoutcallback.NewJSONStdoutCallbackExecute(execute.NewDefaultExecute(
         execute.WithCmd(playbookCmd),
@@ -173,5 +192,24 @@ func CreateVM(templateName string, vmName string) net.IP {
     }
 
     return net.ParseIP(ipAdd.(string))
+}
 
+func CreateRouter(octet int) *host.Host {
+    vmName := fmt.Sprintf("router-%v", octet)
+    routerData := struct{
+        octet int
+    }{
+        octet: octet,
+    }
+
+    FillTemplate("ansible/templates/router.tmpl", routerData)
+
+    ip := CreateVM(ConfigMap.RouterTemplate, vmName)
+
+    router := host.Host{
+        Hostname: vmName,
+        Ip: ip,
+    }
+
+    return &router
 }

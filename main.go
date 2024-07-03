@@ -4,16 +4,22 @@ import (
 	"EasyRvB/host"
 	"EasyRvB/service"
 	"fmt"
+    "time"
+	"net"
 )
 
 var ServiceConfigs map[string]*service.ServiceConfig
 var ConfigMap Config
+var CurrentHosts []*host.Host
+var ThirdOctet int
 
 func init() {
 
     ConfigMap = Config{}
     ReadConfig(&ConfigMap, "config.toml")
     fmt.Println(ConfigMap)
+
+    ThirdOctet = getAvailableOctet()
     
 	ServiceConfigs = make(map[string]*service.ServiceConfig)
 
@@ -49,9 +55,14 @@ func init() {
 }
 
 func main() {
-    ip := CreateVM("Ubuntu 22.04 Blank", "TestVM3")
-    testHost := host.NewHost("test-web", ip, "Ubuntu22")
-	err := RunPlaybook("apache", testHost)
+    ip := CreateVM("Ubuntu 22.04 Blank", "TestVM4")
+    nattedIP := net.IPv4(172, 16, byte(ThirdOctet), ip.To4()[3])
+    testHost := host.NewHost("test-web", ip, nattedIP, "Ubuntu22")
+    CurrentHosts = append(CurrentHosts, testHost)
+
+    time.Sleep(30 * time.Second)
+
+	err := RunPlaybook("apache", testHost, "root")
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -59,4 +70,9 @@ func main() {
 	}
 
 	testHost.GetServices()
+}
+
+func getAvailableOctet() int {
+    // To implement
+    return 245
 }

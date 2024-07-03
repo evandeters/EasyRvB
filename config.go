@@ -23,6 +23,7 @@ type Config struct {
     ResourcePool               string
     LogPath                    string
     PortGroup                  string
+    RouterTemplate             string
 }
 
 /*

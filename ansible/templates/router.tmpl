@@ -1,0 +1,23 @@
+---
+- name: Configure CSR1kv
+  hosts: router
+  gather_facts: no
+  tasks:
+    - name: Configure one-to-one NAT
+      ios_config:
+        lines:
+          - ip nat outside source static network 172.16.{{ .Octet }}.0 192.168.1.0 /24
+          - ip nat inside source static network 192.168.1.0 172.16.{{ .Octet }}.0 /24
+      register: output
+
+    - name: Configure G1
+      ios_config:
+        lines:
+          - ip nat outside
+        parents: interface GigabitEthernet1
+
+    - name: Configure G2
+      ios_config:
+        lines:
+          - ip nat inside
+        parents: interface GigabitEthernet2

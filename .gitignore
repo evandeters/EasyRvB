@@ -24,3 +24,5 @@ go.work
 config.toml
 
 ansible/*.yaml
+
+ansible.cfg
