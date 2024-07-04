@@ -1,0 +1,30 @@
+---
+- name: Include Variables
+  ansible.builtin.include_vars:
+    file: default.yaml
+
+- name: Configure one-to-one NAT
+  ios_config:
+    lines:
+      - ip nat outside source static network 172.16.{{ third_octet }}.0 192.168.1.0 /24
+      - ip nat inside source static network 192.168.1.0 172.16.{{ third_octet }}.0 /24
+    save_when: modified
+  register: output
+
+- name: Configure G2
+  ios_config:
+    lines:
+      - ip address 172.16.{{ third_octet }}.1 255.255.0.0
+      - ip nat outside
+      - no shutdown
+    save_when: modified
+    parents: interface GigabitEthernet2
+
+- name: Configure G3
+  ios_config:
+    lines:
+      - ip address 192.168.1.1 255.255.255.0
+      - ip nat inside
+      - no shutdown
+    save_when: modified
+    parents: interface GigabitEthernet3

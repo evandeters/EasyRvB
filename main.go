@@ -4,8 +4,6 @@ import (
 	"EasyRvB/host"
 	"EasyRvB/service"
 	"fmt"
-    "time"
-	"net"
 )
 
 var ServiceConfigs map[string]*service.ServiceConfig
@@ -17,10 +15,7 @@ func init() {
 
     ConfigMap = Config{}
     ReadConfig(&ConfigMap, "config.toml")
-    fmt.Println(ConfigMap)
-
     ThirdOctet = getAvailableOctet()
-    
 	ServiceConfigs = make(map[string]*service.ServiceConfig)
 
 	roles, err := getAnsibleRoles("./ansible")
@@ -39,7 +34,6 @@ func init() {
 			fmt.Println(err)
 			continue
 		}
-		fmt.Println(service.Name)
 		ServiceConfigs[service.Name] = service
 	}
 
@@ -55,21 +49,24 @@ func init() {
 }
 
 func main() {
-    ip := CreateVM("Ubuntu 22.04 Blank", "TestVM4")
-    nattedIP := net.IPv4(172, 16, byte(ThirdOctet), ip.To4()[3])
-    testHost := host.NewHost("test-web", ip, nattedIP, "Ubuntu22")
-    CurrentHosts = append(CurrentHosts, testHost)
+    router := CreateRouter("Cisco CSR1kv Blank")
+    CurrentHosts = append(CurrentHosts, router)
 
-    time.Sleep(30 * time.Second)
+    fmt.Println("Router created:", router.Hostname, router.Ip)
+    fmt.Println("Configuring router...")
+    err := ConfigRouter(router, ThirdOctet)
+    if err != nil {
+        fmt.Println(err)
+    }
 
-	err := RunPlaybook("apache", testHost, "root")
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		testHost.AddService(*service.NewServiceInstance(ServiceConfigs["apache_http"]))
-	}
-
-	testHost.GetServices()
+    vm := CreateVM("Ubuntu 22.04 Blank", "apache-vm")
+    CurrentHosts = append(CurrentHosts, vm)
+    fmt.Println("VM created:", vm.Hostname, vm.Ip)
+    fmt.Println("Configuring VM...")
+    err = RunPlaybook("apache", vm, "root")
+    if err != nil {
+        fmt.Println(err)
+    }
 }
 
 func getAvailableOctet() int {

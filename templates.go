@@ -27,17 +27,16 @@ func ReplaceBrackets(filePath string) {
     }
 }
 
-func FillTemplate(filePath string, data interface{}) {
-    templateName := strings.Split(filePath, string(os.PathSeparator))
+func FillTemplate(tmplPath, resultPath string, data interface{}) {
+    templateName := strings.Split(tmplPath, string(os.PathSeparator))
 
-    tmpl, err := template.New(templateName[len(templateName) - 1]).ParseGlob(filePath)
+    tmpl, err := template.New(templateName[len(templateName) - 1]).ParseGlob(tmplPath)
     if err != nil {
         panic(err)
     }
 
-    fileName := strings.Split(templateName[len(templateName) - 1], ".")[0]
 
-    outputFile, err := os.Create("ansible/" + fileName + ".yaml")
+    outputFile, err := os.Create(resultPath)
     if err != nil {
         panic(err)
     }

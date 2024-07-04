@@ -1,23 +1,36 @@
 ---
-- name: Configure CSR1kv
-  hosts: router
+- name: Create a Router from a template
+  hosts: localhost
   gather_facts: no
   tasks:
-    - name: Configure one-to-one NAT
-      ios_config:
-        lines:
-          - ip nat outside source static network 172.16.{{ .Octet }}.0 192.168.1.0 /24
-          - ip nat inside source static network 192.168.1.0 172.16.{{ .Octet }}.0 /24
-      register: output
+  - name: Clone the Router
+    vmware_guest:
+      hostname: "{{ .VCenterServer }}"
+      username: "{{ .VCenterUser }}"
+      password: "{{ .VCenterPassword }}"
+      validate_certs: False
+      name: "{{ .VMName }}"
+      template: "{{ .TemplateName }}"
+      datacenter: "{{ .Datacenter }}"
+      datastore: "{{ .Datastore }}"
+      folder: "{{ .VMFolder }}"
+      state: poweredon
+      cluster: "{{ .Cluster }}"
+      resource_pool: "{{ .ResourcePool }}"
+      wait_for_ip_address: yes
 
-    - name: Configure G1
-      ios_config:
-        lines:
-          - ip nat outside
-        parents: interface GigabitEthernet1
+  - name: Get IP Address
+    vmware_guest_info:
+      hostname: "{{ .VCenterServer }}"
+      username: "{{ .VCenterUser }}"
+      password: "{{ .VCenterPassword }}"
+      datacenter: "{{ .Datacenter }}"
+      validate_certs: False
+      name: "{{ .VMName }}"
+      schema: "vsphere"
+      properties:
+        - guest.ipAddress
+    register: vm_info
 
-    - name: Configure G2
-      ios_config:
-        lines:
-          - ip nat inside
-        parents: interface GigabitEthernet2
+  - set_fact:
+      ip_dict: { "ip_address": "[[ vm_info.instance.guest.ipAddress ]]" }

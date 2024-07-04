@@ -68,7 +68,6 @@ func GetRoleType(path string) (string, error) {
 }
 
 func ServiceFromRole(role, roleType string) (*service.ServiceConfig, error) {
-    fmt.Printf("Role: %v, RoleType: %v\n", role, roleType)
 
     configPath := role + string(os.PathSeparator) + roleType + ".toml"
 
@@ -91,7 +90,6 @@ func RunPlaybook(role string, target *host.Host, user string) error {
         Inventory: target.NattedIp.String() + ",",
         Tags:      role,
         User:      user,
-
     }
 
 
@@ -99,7 +97,7 @@ func RunPlaybook(role string, target *host.Host, user string) error {
         Role string
     }
 
-    FillTemplate("ansible/templates/playbook.tmpl", roleTemplate{Role: role})
+    FillTemplate("ansible/templates/playbook.tmpl", "ansible/playbook.yaml", roleTemplate{Role: role})
 
     playbookCmd := playbook.NewAnsiblePlaybookCmd(
         playbook.WithPlaybooks("ansible/playbook.yaml"),
@@ -116,7 +114,7 @@ func RunPlaybook(role string, target *host.Host, user string) error {
     return nil
 }
 
-func CreateVM(templateName string, vmName string) net.IP {
+func CreateVM(templateName string, vmName string) *host.Host {
     var boxIP string
     for {
         ipExists := false
@@ -161,7 +159,7 @@ func CreateVM(templateName string, vmName string) net.IP {
         IPAddress: boxIP,
     }
 
-    FillTemplate("ansible/templates/vm.tmpl", vmData)
+    FillTemplate("ansible/templates/vm.tmpl", "ansible/vm.yaml", vmData)
     ReplaceBrackets("ansible/vm.yaml")
 
     playbookCmd := playbook.NewAnsiblePlaybookCmd(
@@ -186,30 +184,125 @@ func CreateVM(templateName string, vmName string) net.IP {
         panic(err)
     }
 
-    ipAdd := res.Plays[0].Tasks[1].Hosts["localhost"].AnsibleFacts["ip_dict"].(map[string]interface{})["ip_address"]
-    if ipAdd == nil {
+    ip := res.Plays[0].Tasks[1].Hosts["localhost"].AnsibleFacts["ip_dict"].(map[string]interface{})["ip_address"]
+    if ip == nil {
         panic("IP Address not found")
     }
 
-    return net.ParseIP(ipAdd.(string))
+    ipAdd := net.ParseIP(ip.(string))
+
+    nattedIP := net.IPv4(172, 16, byte(ThirdOctet), ipAdd.To4()[3])
+    newHost := host.NewHost("test-web", ipAdd, nattedIP, "Ubuntu22")
+
+    return newHost
 }
 
-func CreateRouter(octet int) *host.Host {
-    vmName := fmt.Sprintf("router-%v", octet)
-    routerData := struct{
-        octet int
+func CreateRouter(templateName string) *host.Host {
+    vmName := fmt.Sprintf("router-%v", ThirdOctet)
+
+    vmData := struct{
+        TemplateName string
+        VCenterServer string
+        VCenterUser string
+        VCenterPassword string
+        ResourcePool string
+        Datacenter string
+        Cluster string
+        VMFolder string
+        VMName string
+        Datastore string
     }{
-        octet: octet,
+        TemplateName: templateName,
+        VCenterServer: ConfigMap.VCenterServer,
+        VCenterUser: ConfigMap.VCenterUsername,
+        VCenterPassword: ConfigMap.VCenterPassword,
+        ResourcePool: ConfigMap.ResourcePool,
+        Datacenter: ConfigMap.Datacenter,
+        Cluster: ConfigMap.Cluster,
+        VMFolder: ConfigMap.VMFolder,
+        Datastore: ConfigMap.Datastore,
+        VMName: vmName,
     }
 
-    FillTemplate("ansible/templates/router.tmpl", routerData)
+    FillTemplate("ansible/templates/router.tmpl", "ansible/router.yaml", vmData)
+    ReplaceBrackets("ansible/router.yaml")
 
-    ip := CreateVM(ConfigMap.RouterTemplate, vmName)
+    playbookCmd := playbook.NewAnsiblePlaybookCmd(
+        playbook.WithPlaybooks("ansible/router.yaml"),
+    )
 
-    router := host.Host{
+    buff := new(bytes.Buffer)
+
+    exec := stdoutcallback.NewJSONStdoutCallbackExecute(execute.NewDefaultExecute(
+        execute.WithCmd(playbookCmd),
+        execute.WithWrite(io.Writer(buff)),
+        ),
+    )
+
+    err := exec.Execute(context.Background())
+    if err != nil { 
+        panic(err)
+    }
+
+    res, err := results.ParseJSONResultsStream(buff)
+    if err != nil {
+        panic(err)
+    }
+
+    ip := res.Plays[0].Tasks[2].Hosts["localhost"].AnsibleFacts["ip_dict"].(map[string]interface{})["ip_address"]
+    if ip == nil {
+        panic("IP Address not found")
+    }
+
+    ipAdd := net.ParseIP(ip.(string))
+
+    newHost := host.Host{
         Hostname: vmName,
-        Ip: ip,
+        Ip: ipAdd,
     }
 
-    return &router
+    return &newHost
+}
+
+func ConfigRouter(router *host.Host, octet int) error {
+    routerData := struct{
+        Octet int
+    }{
+        Octet: octet,
+    }
+
+    inventoryData := struct{
+        RouterIp string
+    }{
+        RouterIp: router.Ip.String(),
+    }
+
+    ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
+        Become:    true,
+        Inventory: "ansible/inventory/inventory.ini",
+        Tags:      "router",
+    }
+
+    FillTemplate("ansible/roles/router/vars/default.tmpl", "ansible/roles/router/vars/default.yaml", routerData)
+    FillTemplate("ansible/templates/inventory.tmpl", "ansible/inventory/inventory.ini", inventoryData)
+
+    type roleTemplate struct {
+        Role string
+    }
+
+    FillTemplate("ansible/templates/playbook.tmpl", "ansible/playbook.yaml", roleTemplate{Role: "router"})
+
+    playbookCmd := playbook.NewAnsiblePlaybookCmd(
+        playbook.WithPlaybooks("ansible/playbook.yaml"),
+        playbook.WithPlaybookOptions(ansiblePlaybookOptions),
+    )
+
+    exec := execute.NewDefaultExecute(
+        execute.WithCmd(playbookCmd),
+    )
+
+    err := exec.Execute(context.Background())
+    if err != nil { return err }
+
+    return nil
 }
