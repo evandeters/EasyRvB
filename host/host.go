@@ -10,16 +10,16 @@ type Host struct {
 	Hostname        string
 	Ip              net.IP
     NattedIp        net.IP
-	OperatingSystem string
+	VMTemplate        string
 	Services        []*service.ServiceInstance
 }
 
-func NewHost(hostname string, ip, nattedIP net.IP, operatingSystem string) *Host {
+func NewHost(hostname string, ip, nattedIP net.IP, template string) *Host {
 	return &Host{
 		Hostname:        hostname,
 		Ip:              ip,
         NattedIp:        nattedIP,
-		OperatingSystem: operatingSystem,
+		VMTemplate:      template,
 		Services:        []*service.ServiceInstance{},
 	}
 }

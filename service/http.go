@@ -1,8 +1,10 @@
 package service
 
-import ()
-
 type HTTPConfig struct {
 	Host string `toml:"host"`
-	Cms  string `toml:"cms"`
+	RequireDB  bool `toml:"requiredb"`
+}
+
+func FillConfig(path string, values interface{}) error {
+    return nil
 }

@@ -7,20 +7,28 @@ import (
 	"github.com/google/uuid"
 )
 
+type ServiceRunner interface {
+    FillConfig(path string, values interface{}) error
+}
+
 type ServiceConfig struct {
-	Name       string
-	Port       int16
-	Protocol   string
-	Limit      int
-	Dependency map[string][]string
+	Name       string `toml:"Name"`
+    User       string `toml:"User"`
+    Type       string `toml:"Type"`
+	Port       int16  `toml:"Port"`
+	Protocol   string `toml:"Protocol"`
+	Limit      int    `toml:"Limit"`
+    SupportedOS []string `toml:"SupportedOS,omitempty"`
+	Dependency map[string][]string `toml:"Dependency,omitempty"`
 
 	Kubernetes KubernetesConfig `toml:"Kubernetes,omitempty"`
 	Http       HTTPConfig       `toml:"Http,omitempty"`
+    Database   DatabaseConfig      `toml:"Database,omitempty"`
 }
 
 type ServiceInstance struct {
 	ID        uuid.UUID
-	ConfigMap *ServiceConfig
+	ConfigMap ServiceConfig
 }
 
 func (g *ServiceConfig) ReadConfig(path string) error {
@@ -35,7 +43,7 @@ func (g *ServiceConfig) ReadConfig(path string) error {
 	return nil
 }
 
-func NewServiceInstance(config *ServiceConfig) *ServiceInstance {
+func NewServiceInstance(config ServiceConfig) *ServiceInstance {
 	svc := ServiceInstance{
 		ID:        uuid.New(),
 		ConfigMap: config,

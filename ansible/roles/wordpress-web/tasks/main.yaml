@@ -1,0 +1,68 @@
+---
+- name: Include variables
+  ansible.builtin.include_vars: default.yaml
+
+- name: Install prerequisites
+  apt: name=aptitude update_cache=yes state=latest force_apt_get=yes
+
+- name: Install LAMP Packages
+  apt: name={{ item }} update_cache=yes state=latest
+  loop: [ 'apache2', 'php', 'php-mysql', 'libapache2-mod-php' ]
+
+- name: Install PHP Extensions
+  apt: name={{ item }} update_cache=yes state=latest
+  loop: "{{ php_modules }}"
+
+    # Apache Configuration
+- name: Create document root
+  file:
+    path: "/var/www/{{ http_host }}"
+    state: directory
+    owner: "www-data"
+    group: "www-data"
+    mode: '0755'
+
+- name: Set up Apache VirtualHost
+  template:
+    src: "apache.conf.j2"
+    dest: "/etc/apache2/sites-available/{{ http_conf }}"
+  notify: Reload Apache
+
+- name: Enable rewrite module
+  shell: /usr/sbin/a2enmod rewrite
+  notify: Reload Apache
+
+- name: Enable new site
+  shell: /usr/sbin/a2ensite {{ http_conf }}
+  notify: Reload Apache
+
+- name: Disable default Apache site
+  shell: /usr/sbin/a2dissite 000-default.conf
+  notify: Restart Apache
+
+    # WordPress Configuration
+- name: Download and unpack latest WordPress
+  unarchive:
+    src: https://wordpress.org/latest.tar.gz
+    dest: "/var/www/{{ http_host }}"
+    remote_src: yes
+    creates: "/var/www/{{ http_host }}/wordpress"
+
+- name: Set ownership
+  file:
+    path: "/var/www/{{ http_host }}"
+    state: directory
+    recurse: yes
+    owner: www-data
+    group: www-data
+
+- name: Set permissions for directories
+  shell: "/usr/bin/find /var/www/{{ http_host }}/wordpress/ -type d -exec chmod 750 {} \\;"
+
+- name: Set permissions for files
+  shell: "/usr/bin/find /var/www/{{ http_host }}/wordpress/ -type f -exec chmod 640 {} \\;"
+- name: Set up wp-config
+  template:
+    src: "wp-config.php.j2"
+    dest: "/var/www/{{ http_host }}/wordpress/wp-config.php"
+

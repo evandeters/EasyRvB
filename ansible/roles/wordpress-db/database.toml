@@ -1,0 +1,10 @@
+name = "wordpress-db"
+type = "database"
+port = 3306
+protocol = "tcp"
+limit = 2
+user = "root"
+supportedos = [ "ubuntu", "debian" ]
+
+[database]
+dbtype = "mysql"

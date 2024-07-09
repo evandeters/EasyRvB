@@ -1,0 +1,13 @@
+---
+php_modules: [ 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-xmlrpc', 'php-soap', 'php-intl', 'php-zip' ]
+
+#MySQL Settings
+mysql_db: "wordpress"
+mysql_user: "root"
+mysql_password: "password"
+mysql_ip: {{ .Ip }}
+
+#HTTP Settings
+http_host: "{{ .Host }}"
+http_conf: "{{ .Host }}.conf"
+http_port: "{{ .Port }}"

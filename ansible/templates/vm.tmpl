@@ -28,4 +28,4 @@
     register: vm_info
 
   - set_fact:
-      ip_dict: { "ip_address": "[[ vm_info.instance.hw_eth0.ipaddresses[0] ]]" }
+      ip_dict: { "ip_address": "[[ vm_info.instance.hw_eth0.ipaddresses | ansible.utils.ipv4 ]]" }

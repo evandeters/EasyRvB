@@ -28,12 +28,12 @@
 
 - name: Copy template index page
   template:
-    src: "../files/index.html.j2"
+    src: "index.html.j2"
     dest: "/var/www/{{ http_host }}/index.html"
 
 - name: Set up virtual host
   template:
-    src: "../files/apache.conf.j2"
+    src: "apache.conf.j2"
     dest: "/etc/apache2/sites-available/{{ http_conf }}"
 
 - name: Enable new site

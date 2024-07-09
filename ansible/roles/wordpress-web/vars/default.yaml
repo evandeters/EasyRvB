@@ -1,0 +1,13 @@
+---
+php_modules: [ 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-xmlrpc', 'php-soap', 'php-intl', 'php-zip' ]
+
+#MySQL Settings
+mysql_db: "wordpress"
+mysql_user: "root"
+mysql_password: "password"
+mysql_ip: 192.168.1.8
+
+#HTTP Settings
+http_host: "sdc.cpp"
+http_conf: "sdc.cpp.conf"
+http_port: "80"

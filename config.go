@@ -24,6 +24,7 @@ type Config struct {
     LogPath                    string
     PortGroup                  string
     RouterTemplate             string
+    VMTemplates                []string
 }
 
 /*
