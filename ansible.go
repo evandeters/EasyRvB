@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"EasyRvB/host"
 	"EasyRvB/service"
 
 	"github.com/apenella/go-ansible/v2/pkg/execute"
@@ -63,7 +62,7 @@ func ServiceFromRole(role string) (service.ServiceConfig, error) {
     return svc, nil
 }
 
-func RunPlaybook(role string, target *host.Host, user string) error {
+func RunPlaybook(role string, target Host, user string) error {
     ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
         Become:    true,
         Inventory: target.NattedIp.String() + ",",

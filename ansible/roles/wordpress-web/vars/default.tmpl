@@ -5,9 +5,9 @@ php_modules: [ 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-xmlrpc', 'p
 mysql_db: "wordpress"
 mysql_user: "root"
 mysql_password: "password"
-mysql_ip: {{ .Ip }}
+mysql_ip: {{ .DatabaseIP }}
 
 #HTTP Settings
 http_host: "{{ .Host }}"
 http_conf: "{{ .Host }}.conf"
-http_port: "{{ .Port }}"
+http_port: 80

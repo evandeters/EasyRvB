@@ -1,6 +1,6 @@
 ---
 - hosts: all
   roles:
-    - role: wordpress-web
+    - role: apache
       tags:
-        - wordpress-web
+        - apache

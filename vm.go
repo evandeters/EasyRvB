@@ -1,12 +1,10 @@
 package main
 
 import (
-	"EasyRvB/host"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 
 	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
@@ -15,23 +13,7 @@ import (
 	"github.com/apenella/go-ansible/v2/pkg/playbook"
 )
 
-func CreateVM(templateName string, vmName string) *host.Host {
-    var boxIP string
-    for {
-        ipExists := false
-        fourthOctet := rand.Intn(250) + 4
-        boxIP = fmt.Sprintf("192.168.1.%v", fourthOctet)
-        for _, box := range CurrentHosts {
-            if box.Ip.String() == boxIP {
-                ipExists = true
-                break
-            }
-        }
-        if !ipExists {
-            break
-        }
-    }
-
+func CreateVM(vm Host) error {
     vmData := struct{
         TemplateName string
         VCenterServer string
@@ -46,7 +28,7 @@ func CreateVM(templateName string, vmName string) *host.Host {
         PortGroup string
         IPAddress string
     }{
-        TemplateName: templateName,
+        TemplateName: vm.VMTemplate,
         VCenterServer: ConfigMap.VCenterServer,
         VCenterUser: ConfigMap.VCenterUsername,
         VCenterPassword: ConfigMap.VCenterPassword,
@@ -56,8 +38,8 @@ func CreateVM(templateName string, vmName string) *host.Host {
         VMFolder: ConfigMap.VMFolder,
         Datastore: ConfigMap.Datastore,
         PortGroup: ConfigMap.PortGroup,
-        VMName: vmName,
-        IPAddress: boxIP,
+        VMName: vm.Hostname,
+        IPAddress: vm.Ip.String(),
     }
 
     FillTemplate("ansible/templates/vm.tmpl", "ansible/vm.yaml", vmData)
@@ -80,25 +62,15 @@ func CreateVM(templateName string, vmName string) *host.Host {
         panic(err)
     }
 
-    res, err := results.ParseJSONResultsStream(buff)
+    _, err = results.ParseJSONResultsStream(buff)
     if err != nil {
-        panic(err)
+        return err
     }
 
-    ip := res.Plays[0].Tasks[1].Hosts["localhost"].AnsibleFacts["ip_dict"].(map[string]interface{})["ip_address"]
-    if ip == nil {
-        panic("IP Address not found")
-    }
-
-    ipAdd := net.ParseIP(ip.([]interface{})[0].(string))
-
-    nattedIP := net.IPv4(172, 16, byte(ThirdOctet), ipAdd.To4()[3])
-    newHost := host.NewHost(vmName, ipAdd, nattedIP, "Ubuntu22")
-
-    return newHost
+    return nil
 }
 
-func CreateRouter(templateName string) *host.Host {
+func CreateRouter(templateName string) *Host {
     vmName := fmt.Sprintf("router-%v", ThirdOctet)
 
     vmData := struct{
@@ -159,7 +131,7 @@ func CreateRouter(templateName string) *host.Host {
 
     ipAdd := net.ParseIP(ip.(string))
 
-    newHost := host.Host{
+    newHost := Host{
         Hostname: vmName,
         Ip: ipAdd,
     }
@@ -167,7 +139,7 @@ func CreateRouter(templateName string) *host.Host {
     return &newHost
 }
 
-func ConfigRouter(router *host.Host, octet int) error {
+func ConfigRouter(router *Host, octet int) error {
     routerData := struct{
         Octet int
     }{

@@ -1,26 +1,26 @@
 package main
 
 import (
-	"EasyRvB/host"
 	"EasyRvB/service"
 	"fmt"
 )
 
-var ServiceConfigs map[string]service.ServiceConfig
-var ServiceNames []string
-var ConfigMap Config
-var CurrentHosts []*host.Host
-var ThirdOctet int
+var (
+    db = ConnectToSQLite()
+    ServiceConfigs map[string]service.ServiceConfig
+    ServiceNames []string
+    ConfigMap Config
+    CurrentHosts []*Host
+    ThirdOctet = GetAvailableOctet()
+    MaxServices = 3
+)
 
 func init() {
+    db.AutoMigrate(&Host{})
 
     ConfigMap = Config{}
-    ReadConfig(
-    	&ConfigMap,
-    	"config.toml",
-    )
+    ReadConfig(&ConfigMap, "config.toml")
     fmt.Println("VMTemplates", ConfigMap.VMTemplates)
-    ThirdOctet = GetAvailableOctet()
     ServiceConfigs = make(map[string]service.ServiceConfig)
 
     roles, err := GetAnsibleRoles("./ansible")
@@ -40,7 +40,7 @@ func init() {
 
     for key, svc := range ServiceConfigs {
         ServiceNames = append(ServiceNames, key)
-        if (svc.Http != service.HTTPConfig{}) {
+        if (svc.Http != &service.HTTPConfig{}) {
             fmt.Println("HTTP Service found:", svc.Name)
         }
 
@@ -66,11 +66,39 @@ func main() {
         fmt.Println(err)
     }*/
 
-    GenerateHosts(2)
-    for _, host := range CurrentHosts {
-        fmt.Println("Host generated:", host.Hostname, host.Ip, host.NattedIp, host.VMTemplate)
+    fmt.Println("Creating hosts...")
+    //GenerateHosts(2)
+    hosts, err := GetHosts()
+    if err != nil {
+        fmt.Println(err)
+    }
+    for _, host := range hosts {
+        fmt.Println(host.Hostname, host.Ip)
     }
 
+    //AddServicesToHosts()
+    
+    for _, host := range hosts {
+        err := CreateVM(host)
+        if err != nil {
+            fmt.Println(err)
+            continue
+        }
+        services, err := GetServices(host)
+        if err != nil {
+            fmt.Println(err)
+            continue
+        }
+        for _, svc := range services{
+            err := RunPlaybook(ServiceConfigs[svc].Name, host, ServiceConfigs[svc].User)
+            if err != nil {
+                fmt.Println(err)
+            }
+        }
+    }
+
+
+    /*
     AddServicesToHosts()
     for _, host := range CurrentHosts {
         host.GetServices()
@@ -87,7 +115,6 @@ func main() {
     }
     
 
-    /*
     vm := CreateVM("Ubuntu 22.04 Blank", "apache-vm")
     CurrentHosts = append(CurrentHosts, vm)
     fmt.Println("VM created:", vm.Hostname, vm.Ip)

@@ -1,16 +1,13 @@
 package main
 
 import (
-	"EasyRvB/host"
-	"EasyRvB/service"
-	"fmt"
-	"math/rand"
-	"net"
-	"strconv"
-	"strings"
+    "fmt"
+    "math/rand"
+    "net"
+    "strconv"
+    "strings"
 
-	"github.com/brianvoe/gofakeit/v7"
-	"github.com/google/uuid"
+    "github.com/brianvoe/gofakeit/v7"
 )
 
 func GenerateHosts(numHosts int) {
@@ -18,31 +15,61 @@ func GenerateHosts(numHosts int) {
         random := rand.Intn(len(ConfigMap.VMTemplates))
         ip := GenerateIP("192.168.1")
         nattedIP := "172.16." + strconv.Itoa(ThirdOctet) + "." + strings.Split(ip.String(), ".")[3]
-        newHost := host.Host{
+        newHost := Host{
             Hostname: gofakeit.CarMaker(),
             Ip: ip,
             NattedIp: net.ParseIP(nattedIP),
             VMTemplate: ConfigMap.VMTemplates[random],
         }
         CurrentHosts = append(CurrentHosts, &newHost)
+        err := AddHost(newHost)
+        if err != nil {
+            fmt.Println("Error:", err)
+        }
     }
 }
 
 func AddServicesToHosts() {
-    for _, vm := range CurrentHosts {
-        for i := 0; i < 1; i++ {
-            svc := service.ServiceInstance{
-                ID: uuid.New(),
-                ConfigMap: ServiceConfigs[ServiceNames[rand.Intn(len(ServiceNames))]],
-            }
-            for _, os := range svc.ConfigMap.SupportedOS {
-                fmt.Println("Checking if", vm.VMTemplate, "supports", os)
-                if strings.Contains(strings.ToLower(vm.VMTemplate), strings.ToLower(os)) {
-                    vm.Services = append(vm.Services, &svc)
-                }
-            }
+    hosts, err := GetHosts()
+    if err != nil {
+        fmt.Println(err)
+    }
+    for _, host := range hosts {
+        numServices := rand.Intn(MaxServices) + 1
+        for i := 0; i < numServices; i++ {
+            svcName := ServiceNames[rand.Intn(len(ServiceNames))]
+            AddService(host, svcName)
+            HandleDependency(svcName)
         }
     }
+}
+
+func HandleDependency(svcName string) {
+    for _, dep := range ServiceConfigs[svcName].Dependency {
+        ips := GetDependencyIPs(dep)
+        if ips == nil {
+            randHost := *CurrentHosts[rand.Intn(len(CurrentHosts))]
+            AddService(randHost, dep)
+            ips = append(ips, randHost.Ip.String())
+        }
+        switch ServiceConfigs[svcName].Type {
+        case "http":
+            ServiceConfigs[svcName].Http.SetDatabaseIP(ips[rand.Intn(len(ips))])
+            ServiceConfigs[svcName].Http.SetConfig(svcName)
+        }
+    }
+}
+
+func GetDependencyIPs(service string) []string {
+    var dependencyIPs []string
+    hosts, err := GetHostsWithService(service)
+    if err != nil {
+        fmt.Println(err)
+    }
+    for _, host := range hosts {
+        dependencyIPs = append(dependencyIPs, host.Ip.String())
+    }
+    return dependencyIPs
 }
 
 func GenerateIP(network string) net.IP {

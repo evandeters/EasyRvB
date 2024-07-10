@@ -5,12 +5,10 @@ protocol = "tcp"
 limit = 5
 user = "root"
 supportedos = [ "ubuntu", "debian" ]
+dependency = ["wordpress-db"]
 
 [http]
 host = "evandeters.com"
 RequireDB = true
-
-
-[dependency]
-service = ["wordpress-db"]
-
+VarTmplPath = "vars/default.tmpl"
+VarYamlPath = "vars/default.yaml"
