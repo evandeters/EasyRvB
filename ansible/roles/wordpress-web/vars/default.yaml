@@ -5,7 +5,7 @@ php_modules: [ 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-xmlrpc', 'p
 mysql_db: "wordpress"
 mysql_user: "root"
 mysql_password: "password"
-mysql_ip: 192.168.1.35
+mysql_ip: 192.168.1.116
 
 #HTTP Settings
 http_host: "evandeters.com"

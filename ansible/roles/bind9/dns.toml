@@ -1,0 +1,10 @@
+name = "apache"
+type = "http"
+port = 80
+protocol = "tcp"
+limit = 5
+user = "root"
+
+[http]
+host = "evandeters.com"
+requiredb = false

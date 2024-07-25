@@ -23,6 +23,7 @@ type ServiceConfig struct {
 	Kubernetes KubernetesConfig `toml:"Kubernetes,omitempty"`
 	Http       *HTTPConfig       `toml:"Http,omitempty"`
     Database   DatabaseConfig      `toml:"Database,omitempty"`
+    Dns        DnsConfig           `toml:"Dns,omitempty"`
 }
 
 func (g *ServiceConfig) ReadConfig(path string) error {

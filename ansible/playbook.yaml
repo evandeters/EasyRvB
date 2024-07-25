@@ -1,6 +1,6 @@
 ---
 - hosts: all
   roles:
-    - role: apache
+    - role: mariadb
       tags:
-        - apache
+        - mariadb

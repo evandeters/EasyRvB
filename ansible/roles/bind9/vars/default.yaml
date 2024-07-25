@@ -1,0 +1,6 @@
+---
+app_user: "root"
+http_host: "evandeters.com"
+http_conf: "evandeters.com.conf"
+http_port: 80
+disable_default: true

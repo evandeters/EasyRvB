@@ -24,6 +24,14 @@
           ip: "{{ .IPAddress }}"
           netmask: 255.255.255.0
           gateway: "192.168.1.1"
+      customization:
+        dns_servers:
+          - 8.8.8.8
+        script_text: |
+          #!/bin/bash
+          if [ x$1 == x"postcustomization" ]; then
+            ping -c 4 8.8.8.8
+          fi
       wait_for_ip_address: yes
     register: vm_info
 

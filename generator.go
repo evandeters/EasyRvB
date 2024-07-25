@@ -38,10 +38,21 @@ func AddServicesToHosts() {
         numServices := rand.Intn(MaxServices) + 1
         for i := 0; i < numServices; i++ {
             svcName := ServiceNames[rand.Intn(len(ServiceNames))]
-            AddService(host, svcName)
-            HandleDependency(svcName)
+            if !HostHasService(host, svcName) {
+                AddService(host, svcName)
+                HandleDependency(svcName)
+            }
         }
     }
+}
+
+func HostHasService(host Host, svcName string) bool {
+    for _, svc := range host.Services {
+        if svc == svcName {
+            return true
+        }
+    }
+    return false
 }
 
 func HandleDependency(svcName string) {

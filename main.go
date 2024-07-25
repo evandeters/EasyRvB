@@ -3,6 +3,7 @@ package main
 import (
 	"EasyRvB/service"
 	"fmt"
+	"time"
 )
 
 var (
@@ -12,7 +13,7 @@ var (
     ConfigMap Config
     CurrentHosts []*Host
     ThirdOctet = GetAvailableOctet()
-    MaxServices = 3
+    MaxServices = 1
 )
 
 func init() {
@@ -56,7 +57,7 @@ func init() {
 }
 
 func main() {
-    /**router := CreateRouter("Cisco CSR1kv Blank")
+  /**  router := CreateRouter("Cisco CSR1kv Blank")
     CurrentHosts = append(CurrentHosts, router)
 
     fmt.Println("Router created:", router.Hostname, router.Ip)
@@ -67,7 +68,7 @@ func main() {
     }*/
 
     fmt.Println("Creating hosts...")
-    //GenerateHosts(2)
+ //   GenerateHosts(2)
     hosts, err := GetHosts()
     if err != nil {
         fmt.Println(err)
@@ -76,7 +77,7 @@ func main() {
         fmt.Println(host.Hostname, host.Ip)
     }
 
-    //AddServicesToHosts()
+   // AddServicesToHosts()
     
     for _, host := range hosts {
         err := CreateVM(host)
@@ -84,6 +85,7 @@ func main() {
             fmt.Println(err)
             continue
         }
+        time.Sleep(45 * time.Second)
         services, err := GetServices(host)
         if err != nil {
             fmt.Println(err)
